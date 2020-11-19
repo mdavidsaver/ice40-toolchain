@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+
+import sys
+import os
+import logging
+import subprocess as SP
+from tempfile import TemporaryDirectory
+
+_log = logging.getLogger('ice40-build')
+
+def check_call(*args, **kws):
+    _log.debug('Call %s %s', args, kws)
+    ret = SP.check_call(*args, **kws)
+    _log.debug('Called (%s) %s %s', ret, args, kws)
+
+def getargs():
+    from argparse import ArgumentParser
+    P = ArgumentParser()
+    P.add_argument('source', nargs='+',
+                   help='verilog source (*.v) and at least one .pcf')
+    P.add_argument('-o', '--output')
+
+    P.add_argument('-d', '--device', default='hx1k-tq144',
+                   help='iCE40 part.  default "hx1k-tq144" (icestick board)')
+
+    P.add_argument('-f', '--freq', default='12',
+                   help='Target clock frequency.  default 12 (MHz)')
+
+    P.add_argument('-P', '--nextpnr', action='append', default=[],
+                   help='Extra arguments for nextpnr w/o --  eg. "-P gui"')
+
+    P.add_argument('-v', '--verbose', action='store_const', const=logging.DEBUG, default=logging.INFO)
+    P.add_argument('-q', '--quiet',  action='store_const', const=logging.WARN, dest='verbose')
+
+    return P
+
+def main(args):
+    logging.basicConfig(level=args.verbose)
+
+    # assume this script is in the same directory which contains yosys et al.
+    bindir = os.path.dirname(__file__)
+
+    part, _sep, package = args.device.partition('-')
+
+    vsrc = []
+    pcf = None
+    for src in args.source:
+        if src.endswith('.v'):
+            vsrc.append(src)
+        elif src.endswith('.pcf'):
+            pcf = src
+        else:
+            _log.warn('Ignore unknown file type: %s', src)
+
+    if len(vsrc)==0:
+        _log.fatal('No source')
+        sys.exit(1)
+    elif pcf is None:
+        _log.fatal('No .pcf')
+        sys.exit(1)
+
+    if args.output is None:
+        args.output = vsrc[0][:-2] + '.bin'
+
+    _log.info('Sources: %s', ', '.join(vsrc))
+    _log.info('PCF: %s', pcf)
+    _log.info('Part: %s', args.device)
+    _log.info('Output: %s', args.output)
+
+    with TemporaryDirectory() as tmp:
+        outjson = os.path.join(tmp, 'out.json')
+        outasc = os.path.join(tmp, 'out.asc')
+
+        yosys = [
+            os.path.join(bindir, 'yosys'),
+            '-p' , 'synth_ice40; check -noinit -assert; write_json "%s"'%outjson,
+        ] + vsrc
+
+        check_call(yosys)
+
+        pnr = [
+            os.path.join(bindir, 'nextpnr-ice40'),
+            '--'+part,
+            '--package', package,
+            '--json', outjson,
+            '--pcf', pcf,
+            '--asc', outasc,
+            '--freq', args.freq,
+        ] + ['--'+arg for arg in args.nextpnr]
+
+        check_call(pnr)
+
+        pack = [
+            os.path.join(bindir, 'icepack'),
+            outasc,
+            args.output,
+        ]
+
+        check_call(pack)
+
+if __name__=='__main__':
+    main(getargs().parse_args())

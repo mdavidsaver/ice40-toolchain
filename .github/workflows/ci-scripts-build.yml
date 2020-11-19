@@ -12,9 +12,6 @@ on:
   push:
   pull_request:
 
-env:
-    PREFIX: $HOME/usr
-
 jobs:
   build-toolchain:
     name: Build toolchain
@@ -24,12 +21,12 @@ jobs:
       with:
         submodules: true
     - name: "apt-get install"
-      run: sudo apt-get -y install cmake gperf libeigen3-dev libboost-all-dev tcl-dev libftdi-dev
+      run: sudo apt-get -y install cmake gperf libeigen3-dev libboost-all-dev tcl-dev libftdi-dev qtbase5-dev
     - name: Build
-      run: ./toolchain.sh -p "$PREFIX" -j2 maybe-build
+      run: ./toolchain.sh -p "$HOME/usr" -j2 maybe-build
     - name: Test
       run: |
-        export PATH="$PREFIX/bin:$PATH"
+        export PATH="$HOME/usr/bin:$PATH"
         cd nextpnr/ice40/examples/blinky
         yosys -p 'synth_ice40 -top blinky -json blinky.json' blinky.v
         nextpnr-ice40 --hx1k --json blinky.json --pcf blinky.pcf --asc blinky.asc

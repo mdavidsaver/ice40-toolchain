@@ -1,0 +1,12 @@
+[submodule "iverilog"]
+	path = iverilog
+	url = https://github.com/steveicarus/iverilog.git
+[submodule "yosys"]
+	path = yosys
+	url = https://github.com/cliffordwolf/yosys.git
+[submodule "icestorm"]
+	path = icestorm
+	url = https://github.com/cliffordwolf/icestorm.git
+[submodule "nextpnr"]
+	path = nextpnr
+	url = https://github.com/YosysHQ/nextpnr

@@ -1,0 +1,36 @@
+# .github/workflows/ci-scripts-build.yml for use with EPICS Base ci-scripts
+# (see: https://github.com/epics-base/ci-scripts)
+
+# This is YAML - indentation levels are crucial
+
+# Set the 'name:' properties to values that work for you (pvxs)
+
+name: iCE40 Toolchain
+
+# Trigger on pushes and PRs to any branch
+on:
+  push:
+  pull_request:
+
+env:
+    PREFIX: $HOME/usr
+
+jobs:
+  build-toolchain:
+    name: Build toolchain
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: "apt-get install"
+      run: sudo apt-get -y install cmake gperf libeigen3-dev libboost-all-dev tcl-dev libftdi-dev
+    - name: Build
+      run: ./toolchain.sh -p "$PREFIX" -j2 maybe-build
+    - name: Test
+      run: |
+        export PATH="$PREFIX/bin:$PATH"
+        cd nextpnr/ice40/examples/blinky
+        yosys -p 'synth_ice40 -top blinky -json blinky.json' blinky.v
+        nextpnr-ice40 --hx1k --json blinky.json --pcf blinky.pcf --asc blinky.asc
+        icepack blinky.asc blinky.bin

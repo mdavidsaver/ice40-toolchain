@@ -38,6 +38,8 @@ build)
     install -d "$PREFIX/share/toolchain"
     echo "$HEAD" > "$PREFIX/share/toolchain/revision"
 
+    cp -f ice40-build "$PREFIX/bin/"
+
     ;;
 clean)
     git submodule git clean -xdf
